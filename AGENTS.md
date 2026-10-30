@@ -7,6 +7,8 @@
 - HTTP Client: `httpx` or `requests` for fetching external data
 - Data Processing: `pandas`
 - Caching Strategy: Streamlit native caching (`@st.cache_data`, `@st.cache_resource`)
+- Text Data Analysis: spacy, nltk or single agent or Google ADK - not yet used 
+
 
 ## Essential Commands
 - Run app locally: `streamlit run app.py`
@@ -31,6 +33,7 @@
 - Never hardcode URLs, API keys, or endpoint credentials (always use `st.secrets` or `.env` variables via `os.environ`).
 - Never perform heavy data processing or long-running computations on the main Streamlit thread without a loader component (`st.spinner`).
 
+
 ## Project Topology & Pointers
 - App Feature Roadmap & NLP Workflow: Read @docs/workflow.md
 
@@ -40,6 +43,7 @@
 ### 🟢 ALWAYS DO
 - Mock all HTTP networking calls inside tests using `pytest-mock` or `responses`.
 - Use a local mock dataset (e.g., dummy JSON/CSV files in @tests/mock_data/) for verifying UI rendering.
+
 
 ### 🔴 NEVER DO
 - **NEVER trigger live HTTP requests to the public data source during code generation, linting, or automated test suites.** 
