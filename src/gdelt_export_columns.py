@@ -1,4 +1,4 @@
-gdelt_v2_schema = {
+gdelt_v2_export_columns = {
     "GLOBALEVENTID": "int64",  # Unique event identifier
     "SQLDATE": "int64",  # Date formatted as YYYYMMDD
     "MonthYear": "int64",  # Date formatted as YYYYMM
@@ -62,23 +62,23 @@ gdelt_v2_schema = {
     "SOURCEURL": "string",  # Original news article URL
 }
 
-import pandas as pd 
+# import pandas as pd 
 
-df = pd.read_csv("20261025000000.export.CSV", 
-                 sep="\t",
-                 names=list(gdelt_v2_schema.keys()),
-                 dtype=gdelt_v2_schema)
+# df = pd.read_csv("20261025000000.export.CSV", 
+#                  sep="\t",
+#                  names=list(gdelt_v2_export_columns.keys()),
+#                  dtype=gdelt_v2_export_columns)
 
 
-CLIMATE_REGEX = (
-    r"(?i)\b("
-    r"climate|global[-_]?warming|greenhouse|emissions?|carbon|flood|"
-    r"decarboniz\w*|deforestation|renewable|solar|wind[-_]?power|"
-    r"fossil[-_]?fuel|methane|glacier|sea[-_]?level|sustainab\w*"
-    r")\b"
-)
+# CLIMATE_REGEX = (
+#     r"(?i)\b("
+#     r"climate|global[-_]?warming|greenhouse|emissions?|carbon|flood|"
+#     r"decarboniz\w*|deforestation|renewable|solar|wind[-_]?power|"
+#     r"fossil[-_]?fuel|methane|glacier|sea[-_]?level|sustainab\w*"
+#     r")\b"
+# )
 
-df
+# df
 
-from IPython import embed
-embed()                 
+# from IPython import embed
+# embed()                 
