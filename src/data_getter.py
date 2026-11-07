@@ -14,7 +14,7 @@ import warnings
 
 
 # import streamlit as st
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from pathlib import Path
 
@@ -31,6 +31,7 @@ from consts import (
     REL_RAW_CSV_FILES_LOC,
     LAST_DOWNLOADED_FN_TS_KEY,
     DOWNLOAD_LOG_PATH,
+    DAILY_BATCH_CUTOFF,
 )
 
 
@@ -233,7 +234,24 @@ def _write_download_log(log: dict) -> None:
         json.dump(log, f, indent=2)
 
 
-def get_csvs(file_names: List[str], download_if_missing: bool = True) -> List[str]:
+_requests_since_last_pause = 0
+
+
+def _throttle_request(max_requests_per_pause: int = 10, pause_seconds: float = 0.5) -> None:
+    """Pause between request bursts to avoid overloading the GDELT servers."""
+    global _requests_since_last_pause
+    _requests_since_last_pause += 1
+    if _requests_since_last_pause >= max_requests_per_pause:
+        time.sleep(pause_seconds)
+        _requests_since_last_pause = 0
+
+
+def get_csvs(
+    file_names: List[str],
+    download_if_missing: bool = True,
+    pause_seconds: float = 0.5,
+    requests_per_pause: int = 10,
+) -> List[str]:
     """
     Given the set of filenames returned by infer_filenames_to_download(), retrieves
     the corresponding zip files from a fixed GDELT location using a simple
@@ -312,6 +330,7 @@ def get_csvs(file_names: List[str], download_if_missing: bool = True) -> List[st
 
         # Download the file and update the log dictionary
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        _throttle_request(requests_per_pause, pause_seconds)
         try:
             # 1. Download the ZIP file via HTTP GET
             urllib.request.urlretrieve(url, zip_path)
@@ -329,7 +348,7 @@ def get_csvs(file_names: List[str], download_if_missing: bool = True) -> List[st
             log_updates[csv_fn] = {
                 "Download URL": url,
                 "Download Timestamp": timestamp,
-                "Download Status": "Success",
+                "download-status": "Success",
             }
 
         except Exception as e:
@@ -340,7 +359,7 @@ def get_csvs(file_names: List[str], download_if_missing: bool = True) -> List[st
             log_updates[csv_fn] = {
                 "Download URL": url,
                 "Download Timestamp": timestamp,
-                "Download Status": "Failed",
+                "download-status": "Failed",
                 "Failure Reason": str(e),
             }
 
@@ -354,6 +373,53 @@ def get_csvs(file_names: List[str], download_if_missing: bool = True) -> List[st
         _save_last_downloaded_fn_ts(max(timestamps))
 
     return extracted_csv_files
+
+
+def _get_daily_batch_filenames(cutoff_time: str) -> list[str]:
+    """Return the GDELT data file names for the current day's batch up to a cutoff time.
+
+    The cutoff time is expected in HHMMSS format (eg. "080000" for 08:00 AM) and the
+    batch starts at the beginning of the day.
+    """
+    cutoff_dt = datetime.now(timezone.utc).replace(
+        hour=int(cutoff_time[0:2]),
+        minute=int(cutoff_time[2:4]),
+        second=int(cutoff_time[4:6]),
+        microsecond=0,
+    )
+    batch_start = cutoff_dt - timedelta(hours=24)
+    filenames = []
+    current = batch_start
+    while current <= cutoff_dt:
+        filenames.append(_ts_to_gdelt_filename(current.timestamp()))
+        current += timedelta(seconds=GDELT_FILE_INTERVAL_SECONDS)
+    return filenames
+
+
+def get_daily_batch(
+    download_if_missing: bool = True,
+    cutoff_time: str = DAILY_BATCH_CUTOFF,
+) -> list[str]:
+    """
+    Get the GDELT data file names for the daily batch up to a cutoff time (by
+    default 08:00 AM), downloading any files that are missing.
+
+    Files that were already successfully downloaded (per the download log and the
+    physical file state) are skipped; missing files are downloaded when
+    `download_if_missing` is True. Returns the batch file names that were
+    successfully retrieved.
+    """
+    batch_filenames = _get_daily_batch_filenames(cutoff_time)
+    get_csvs(batch_filenames, download_if_missing=download_if_missing)
+
+    download_log = _read_download_log()
+    successful_filenames = []
+    for file_name in batch_filenames:
+        csv_fn = _get_gdelt_export_csv_fn_from_zip_fn(file_name)
+        log_entry = download_log.get(csv_fn) or {}
+        if log_entry.get("download-status") == "Success":
+            successful_filenames.append(file_name)
+    return successful_filenames
 
 
 if __name__ == '__main__':

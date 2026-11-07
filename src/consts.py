@@ -13,3 +13,4 @@ DATA_FILES_LOC = "../data"
 REL_RAW_ZIP_FILES_LOC = "raw_zips"
 REL_RAW_CSV_FILES_LOC = "raw_csvs"
 LAST_DOWNLOADED_FN_TS_KEY = "last_downloaded_fn_ts"
+DAILY_BATCH_CUTOFF = "080000"  # Daily batch cutoff time (HHMMSS, UTC) - eg. "080000" for 08:00 AM
